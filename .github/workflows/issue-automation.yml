@@ -94,7 +94,7 @@ jobs:
       - name: Move bug to In Progress
         uses: ./.github/actions/project-status
         with:
-          action: update-status
+          action: add-to-project
           issue-node-id: ${{ inputs.issue-node-id }}
           target-status: ${{ inputs.status-progress }}
           project-number: ${{ inputs.project-number }}
