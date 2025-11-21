@@ -50,7 +50,7 @@ jobs:
     steps:
       - name: Assign issue to creator
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ github.token }}
           ISSUE_NUMBER: ${{ inputs.issue-number }}
           USER_LOGIN: ${{ inputs.issue-user-login }}
           REPO: ${{ github.repository }}
@@ -104,7 +104,7 @@ jobs:
     steps:
       - name: Remove needs thinking label if exists
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ github.token }}
           ISSUE_NUMBER: ${{ inputs.issue-number }}
           REPO: ${{ github.repository }}
         run: |
