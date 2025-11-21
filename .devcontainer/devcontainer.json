@@ -1,0 +1,21 @@
+{
+  "name": "workflow-toolkit",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "workspace",
+  "workspaceFolder": "/workspaces/workflow-toolkit",
+  "features": {
+    "./local-features/just": {},
+    "./local-features/node": {}
+  },
+  "postCreateCommand": "bash /workspaces/workflow-toolkit/.devcontainer/post-create.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": ["esbenp.prettier-vscode"],
+      "settings": {
+        "prettier.resolveGlobalModules": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+      }
+    }
+  },
+  "remoteUser": "root"
+}
