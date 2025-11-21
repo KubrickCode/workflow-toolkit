@@ -1,0 +1,229 @@
+name: PR Automation
+
+on:
+  workflow_call:
+    inputs:
+      project-number:
+        description: "GitHub Project number"
+        type: string
+        required: true
+      status-progress:
+        description: "Status name for In Progress"
+        type: string
+        default: "Progress"
+      status-review:
+        description: "Status name for Review"
+        type: string
+        default: "Review"
+      event-action:
+        description: "The action that triggered the workflow"
+        type: string
+        required: true
+      pr-number:
+        description: "Pull request number"
+        type: string
+        required: true
+      pr-user-login:
+        description: "PR creator login"
+        type: string
+        required: true
+      pr-is-draft:
+        description: "Whether PR is draft"
+        type: boolean
+        required: true
+      enable-gemini-review:
+        description: "Enable /gemini review comment"
+        type: boolean
+        default: true
+    secrets:
+      GH_PAT:
+        description: "GitHub Personal Access Token with project permissions"
+        required: true
+
+jobs:
+  add-reviewer-on-open:
+    if: inputs.event-action == 'opened'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Add owner as reviewer
+        if: inputs.pr-user-login != github.repository_owner
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          PR_NUMBER: ${{ inputs.pr-number }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh pr edit "$PR_NUMBER" \
+            --add-reviewer "$OWNER" \
+            --repo "$REPO"
+
+  assign-and-sync-on-open:
+    if: inputs.event-action == 'opened' && inputs.pr-user-login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+      contents: read
+    steps:
+      - name: Checkout for scripts
+        uses: actions/checkout@v4
+        with:
+          repository: KubrickCode/workflow-toolkit
+          ref: main
+
+      - name: Assign PR to creator
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          PR_NUMBER: ${{ inputs.pr-number }}
+          USER_LOGIN: ${{ inputs.pr-user-login }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh pr edit "$PR_NUMBER" \
+            --add-assignee "$USER_LOGIN" \
+            --repo "$REPO"
+
+      - name: Get linked issue
+        id: linked
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          PR_NUMBER: ${{ inputs.pr-number }}
+        run: |
+          RESULT=$("./.github/actions/project-status/scripts/get-linked-issue.sh" \
+            "$OWNER" \
+            "$REPO_NAME" \
+            "$PR_NUMBER")
+
+          echo "$RESULT" | grep "^has_linked_issue=" >> $GITHUB_OUTPUT
+          echo "$RESULT" | grep "^issue_number=" >> $GITHUB_OUTPUT || true
+          echo "$RESULT" | grep "^issue_node_id=" >> $GITHUB_OUTPUT || true
+
+      - name: Sync labels from linked issue
+        if: steps.linked.outputs.has_linked_issue == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          ISSUE_NUMBER: ${{ steps.linked.outputs.issue_number }}
+          PR_NUMBER: ${{ inputs.pr-number }}
+          REPO: ${{ github.repository }}
+        run: |
+          ISSUE_LABELS=$(gh issue view "$ISSUE_NUMBER" --repo "$REPO" --json labels --jq '.labels[] | select(.name != "needs thinking") | .name')
+          if [ -n "$ISSUE_LABELS" ]; then
+            echo "$ISSUE_LABELS" | while read -r label; do
+              gh pr edit "$PR_NUMBER" --add-label "$label" --repo "$REPO"
+            done
+          fi
+
+      - name: Update linked issue status
+        if: steps.linked.outputs.has_linked_issue == 'true'
+        uses: ./.github/actions/project-status
+        with:
+          action: update-status
+          issue-node-id: ${{ steps.linked.outputs.issue_node_id }}
+          target-status: ${{ inputs.pr-is-draft && inputs.status-progress || inputs.status-review }}
+          project-number: ${{ inputs.project-number }}
+          github-token: ${{ secrets.GH_PAT }}
+
+      - name: Add Gemini review for non-draft PR
+        if: steps.linked.outputs.has_linked_issue == 'true' && !inputs.pr-is-draft && inputs.enable-gemini-review
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          PR_NUMBER: ${{ inputs.pr-number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh pr comment "$PR_NUMBER" \
+            --body "/gemini review" \
+            --repo "$REPO"
+
+  ready-for-review:
+    if: inputs.event-action == 'ready_for_review'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+      contents: read
+    steps:
+      - name: Checkout for scripts
+        uses: actions/checkout@v4
+        with:
+          repository: KubrickCode/workflow-toolkit
+          ref: main
+
+      - name: Add Gemini review comment
+        if: inputs.enable-gemini-review
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          PR_NUMBER: ${{ inputs.pr-number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh pr comment "$PR_NUMBER" \
+            --body "/gemini review" \
+            --repo "$REPO"
+
+      - name: Get linked issue
+        id: linked
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          PR_NUMBER: ${{ inputs.pr-number }}
+        run: |
+          RESULT=$("./.github/actions/project-status/scripts/get-linked-issue.sh" \
+            "$OWNER" \
+            "$REPO_NAME" \
+            "$PR_NUMBER")
+
+          echo "$RESULT" | grep "^has_linked_issue=" >> $GITHUB_OUTPUT
+          echo "$RESULT" | grep "^issue_node_id=" >> $GITHUB_OUTPUT || true
+
+      - name: Move linked issue to Review
+        if: steps.linked.outputs.has_linked_issue == 'true'
+        uses: ./.github/actions/project-status
+        with:
+          action: update-status
+          issue-node-id: ${{ steps.linked.outputs.issue_node_id }}
+          target-status: ${{ inputs.status-review }}
+          project-number: ${{ inputs.project-number }}
+          github-token: ${{ secrets.GH_PAT }}
+
+  converted-to-draft:
+    if: inputs.event-action == 'converted_to_draft'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+      contents: read
+    steps:
+      - name: Checkout for scripts
+        uses: actions/checkout@v4
+        with:
+          repository: KubrickCode/workflow-toolkit
+          ref: main
+
+      - name: Get linked issue
+        id: linked
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          PR_NUMBER: ${{ inputs.pr-number }}
+        run: |
+          RESULT=$("./.github/actions/project-status/scripts/get-linked-issue.sh" \
+            "$OWNER" \
+            "$REPO_NAME" \
+            "$PR_NUMBER")
+
+          echo "$RESULT" | grep "^has_linked_issue=" >> $GITHUB_OUTPUT
+          echo "$RESULT" | grep "^issue_node_id=" >> $GITHUB_OUTPUT || true
+
+      - name: Move linked issue to Progress
+        if: steps.linked.outputs.has_linked_issue == 'true'
+        uses: ./.github/actions/project-status
+        with:
+          action: update-status
+          issue-node-id: ${{ steps.linked.outputs.issue_node_id }}
+          target-status: ${{ inputs.status-progress }}
+          project-number: ${{ inputs.project-number }}
+          github-token: ${{ secrets.GH_PAT }}

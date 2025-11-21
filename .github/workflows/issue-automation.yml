@@ -1,0 +1,118 @@
+name: Issue Automation
+
+on:
+  workflow_call:
+    inputs:
+      project-number:
+        description: "GitHub Project number"
+        type: string
+        required: true
+      status-backlog:
+        description: "Status name for Backlog"
+        type: string
+        default: "Backlog"
+      status-progress:
+        description: "Status name for In Progress"
+        type: string
+        default: "Progress"
+      event-action:
+        description: "The action that triggered the workflow"
+        type: string
+        required: true
+      issue-number:
+        description: "Issue number"
+        type: string
+        required: true
+      issue-node-id:
+        description: "Issue node ID for GraphQL"
+        type: string
+        required: true
+      issue-user-login:
+        description: "Issue creator login"
+        type: string
+        required: true
+      label-name:
+        description: "Label name (for labeled event)"
+        type: string
+        default: ""
+    secrets:
+      GH_PAT:
+        description: "GitHub Personal Access Token with project permissions"
+        required: true
+
+jobs:
+  assign-on-open:
+    if: inputs.event-action == 'opened'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - name: Assign issue to creator
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          ISSUE_NUMBER: ${{ inputs.issue-number }}
+          USER_LOGIN: ${{ inputs.issue-user-login }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh issue edit "$ISSUE_NUMBER" \
+            --add-assignee "$USER_LOGIN" \
+            --repo "$REPO"
+
+      - name: Checkout for composite action
+        uses: actions/checkout@v4
+        with:
+          repository: KubrickCode/workflow-toolkit
+          ref: main
+
+      - name: Add to project with Backlog status
+        uses: ./.github/actions/project-status
+        with:
+          action: add-to-project
+          issue-node-id: ${{ inputs.issue-node-id }}
+          target-status: ${{ inputs.status-backlog }}
+          project-number: ${{ inputs.project-number }}
+          github-token: ${{ secrets.GH_PAT }}
+
+  bug-to-in-progress:
+    if: inputs.event-action == 'labeled' && inputs.label-name == 'bug'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - name: Checkout for composite action
+        uses: actions/checkout@v4
+        with:
+          repository: KubrickCode/workflow-toolkit
+          ref: main
+
+      - name: Move bug to In Progress
+        uses: ./.github/actions/project-status
+        with:
+          action: update-status
+          issue-node-id: ${{ inputs.issue-node-id }}
+          target-status: ${{ inputs.status-progress }}
+          project-number: ${{ inputs.project-number }}
+          github-token: ${{ secrets.GH_PAT }}
+
+  remove-needs-thinking-on-close:
+    if: inputs.event-action == 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Remove needs thinking label if exists
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          ISSUE_NUMBER: ${{ inputs.issue-number }}
+          REPO: ${{ github.repository }}
+        run: |
+          if gh issue view "$ISSUE_NUMBER" --repo "$REPO" --json labels --jq '.labels[].name' | grep -q "needs thinking"; then
+            gh issue edit "$ISSUE_NUMBER" \
+              --remove-label "needs thinking" \
+              --repo "$REPO"
+            echo "Removed needs thinking label"
+          else
+            echo "No needs thinking label found"
+          fi
