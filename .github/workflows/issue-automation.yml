@@ -35,6 +35,10 @@ on:
         description: "Label name (for labeled event)"
         type: string
         default: ""
+      has-bug-label:
+        description: "Whether issue has bug label on creation"
+        type: boolean
+        default: false
     secrets:
       GH_PAT:
         description: "GitHub Personal Access Token with project permissions"
@@ -65,12 +69,12 @@ jobs:
           repository: KubrickCode/workflow-toolkit
           ref: main
 
-      - name: Add to project with Backlog status
+      - name: Add to project with status
         uses: ./.github/actions/project-status
         with:
           action: add-to-project
           issue-node-id: ${{ inputs.issue-node-id }}
-          target-status: ${{ inputs.status-backlog }}
+          target-status: ${{ inputs.has-bug-label && inputs.status-progress || inputs.status-backlog }}
           project-number: ${{ inputs.project-number }}
           github-token: ${{ secrets.GH_PAT }}
 

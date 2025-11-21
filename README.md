@@ -29,6 +29,7 @@ jobs:
       issue-node-id: ${{ github.event.issue.node_id }}
       issue-user-login: ${{ github.event.issue.user.login }}
       label-name: ${{ github.event.label.name || '' }}
+      has-bug-label: ${{ contains(github.event.issue.labels.*.name, 'bug') }}
     secrets:
       GH_PAT: ${{ secrets.GH_PAT }}
 ```
@@ -68,6 +69,7 @@ jobs:
 | `issue-node-id` | Yes | - | Issue node ID for GraphQL |
 | `issue-user-login` | Yes | - | Issue creator login |
 | `label-name` | No | `""` | Label name (for labeled event) |
+| `has-bug-label` | No | `false` | Whether issue has bug label on creation |
 | `status-backlog` | No | `"Backlog"` | Status name for Backlog |
 | `status-progress` | No | `"Progress"` | Status name for In Progress |
 
