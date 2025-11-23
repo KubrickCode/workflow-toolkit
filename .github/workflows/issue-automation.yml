@@ -15,6 +15,10 @@ on:
         description: "Status name for In Progress"
         type: string
         default: "Progress"
+      status-ready:
+        description: "Status name for Ready"
+        type: string
+        default: "Ready"
       event-action:
         description: "The action that triggered the workflow"
         type: string
@@ -74,11 +78,11 @@ jobs:
         with:
           action: add-to-project
           issue-node-id: ${{ inputs.issue-node-id }}
-          target-status: ${{ inputs.has-bug-label && inputs.status-progress || inputs.status-backlog }}
+          target-status: ${{ inputs.has-bug-label && inputs.status-ready || inputs.status-backlog }}
           project-number: ${{ inputs.project-number }}
           github-token: ${{ secrets.GH_PAT }}
 
-  bug-to-in-progress:
+  bug-to-ready:
     if: inputs.event-action == 'labeled' && inputs.label-name == 'bug'
     runs-on: ubuntu-latest
     permissions:
@@ -91,12 +95,58 @@ jobs:
           repository: KubrickCode/workflow-toolkit
           ref: main
 
-      - name: Move bug to In Progress
+      - name: Get project data
+        id: project
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          OWNER: ${{ github.repository_owner }}
+          PROJECT_NUMBER: ${{ inputs.project-number }}
+        run: |
+          RESULT=$(./.github/actions/project-status/scripts/get-project-data.sh \
+            "$OWNER" \
+            "$PROJECT_NUMBER" \
+            "Status")
+
+          PROJECT_ID=$(echo "$RESULT" | grep "^project_id=" | cut -d= -f2-)
+          echo "project_id=$PROJECT_ID" >> $GITHUB_OUTPUT
+
+      - name: Check current status
+        id: check
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          PROJECT_ID: ${{ steps.project.outputs.project_id }}
+          CONTENT_ID: ${{ inputs.issue-node-id }}
+        run: |
+          RESULT=$(./.github/actions/project-status/scripts/get-item-status.sh \
+            "$PROJECT_ID" \
+            "$CONTENT_ID" \
+            "Status" \
+            "10")
+
+          CURRENT_STATUS=$(echo "$RESULT" | grep "^current_status=" | cut -d= -f2-)
+          echo "current_status=$CURRENT_STATUS" >> $GITHUB_OUTPUT
+          echo "Current status: $CURRENT_STATUS"
+
+          # Check if status should be updated
+          if [ -z "$CURRENT_STATUS" ] || \
+             [ "$CURRENT_STATUS" = "Backlog" ] || \
+             [ "$CURRENT_STATUS" = "${{ inputs.status-backlog }}" ]; then
+            echo "should_update=true" >> $GITHUB_OUTPUT
+            echo "Will update to Ready"
+          else
+            echo "should_update=false" >> $GITHUB_OUTPUT
+            echo "Status is '$CURRENT_STATUS' - skipping update"
+          fi
+
+      - name: Move bug to Ready
+        if: steps.check.outputs.should_update == 'true'
         uses: ./.github/actions/project-status
         with:
-          action: add-to-project
+          action: update-status
           issue-node-id: ${{ inputs.issue-node-id }}
-          target-status: ${{ inputs.status-progress }}
+          target-status: ${{ inputs.status-ready }}
           project-number: ${{ inputs.project-number }}
           github-token: ${{ secrets.GH_PAT }}
 
