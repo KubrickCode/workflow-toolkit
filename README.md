@@ -61,36 +61,36 @@ jobs:
 
 ### Issue Automation
 
-| Input | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `project-number` | Yes | - | GitHub Project number |
-| `event-action` | Yes | - | The action that triggered the workflow |
-| `issue-number` | Yes | - | Issue number |
-| `issue-node-id` | Yes | - | Issue node ID for GraphQL |
-| `issue-user-login` | Yes | - | Issue creator login |
-| `label-name` | No | `""` | Label name (for labeled event) |
-| `has-bug-label` | No | `false` | Whether issue has bug label on creation |
-| `status-backlog` | No | `"Backlog"` | Status name for Backlog |
-| `status-progress` | No | `"Progress"` | Status name for In Progress |
+| Input              | Required | Default      | Description                             |
+| ------------------ | -------- | ------------ | --------------------------------------- |
+| `project-number`   | Yes      | -            | GitHub Project number                   |
+| `event-action`     | Yes      | -            | The action that triggered the workflow  |
+| `issue-number`     | Yes      | -            | Issue number                            |
+| `issue-node-id`    | Yes      | -            | Issue node ID for GraphQL               |
+| `issue-user-login` | Yes      | -            | Issue creator login                     |
+| `label-name`       | No       | `""`         | Label name (for labeled event)          |
+| `has-bug-label`    | No       | `false`      | Whether issue has bug label on creation |
+| `status-backlog`   | No       | `"Backlog"`  | Status name for Backlog                 |
+| `status-progress`  | No       | `"Progress"` | Status name for In Progress             |
 
 ### PR Automation
 
-| Input | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `project-number` | Yes | - | GitHub Project number |
-| `event-action` | Yes | - | The action that triggered the workflow |
-| `pr-number` | Yes | - | PR number |
-| `pr-user-login` | Yes | - | PR creator login |
-| `pr-is-draft` | Yes | - | Whether PR is draft |
-| `status-progress` | No | `"Progress"` | Status name for In Progress |
-| `status-review` | No | `"Review"` | Status name for Review |
-| `enable-gemini-review` | No | `true` | Enable /gemini review comment |
+| Input                  | Required | Default      | Description                            |
+| ---------------------- | -------- | ------------ | -------------------------------------- |
+| `project-number`       | Yes      | -            | GitHub Project number                  |
+| `event-action`         | Yes      | -            | The action that triggered the workflow |
+| `pr-number`            | Yes      | -            | PR number                              |
+| `pr-user-login`        | Yes      | -            | PR creator login                       |
+| `pr-is-draft`          | Yes      | -            | Whether PR is draft                    |
+| `status-progress`      | No       | `"Progress"` | Status name for In Progress            |
+| `status-review`        | No       | `"Review"`   | Status name for Review                 |
+| `enable-gemini-review` | No       | `true`       | Enable /gemini review comment          |
 
 ## Secrets
 
-| Secret | Required | Description |
-|--------|----------|-------------|
-| `GH_PAT` | Yes | GitHub Personal Access Token with `project` scope |
+| Secret   | Required | Description                                       |
+| -------- | -------- | ------------------------------------------------- |
+| `GH_PAT` | Yes      | GitHub Personal Access Token with `project` scope |
 
 ## License
 
