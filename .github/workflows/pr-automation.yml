@@ -68,7 +68,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout for scripts
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: KubrickCode/workflow-toolkit
           ref: main
@@ -146,7 +146,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout for scripts
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: KubrickCode/workflow-toolkit
           ref: main
@@ -197,7 +197,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout for scripts
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: KubrickCode/workflow-toolkit
           ref: main
