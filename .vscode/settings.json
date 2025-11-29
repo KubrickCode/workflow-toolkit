@@ -49,14 +49,14 @@
       ]
     },
     {
-      "name": "Release",
+      "name": "$(rocket) Release",
       "shortcut": "r",
       "color": "orange",
       "command": "just release",
       "terminalName": "Release"
     },
     {
-      "name": "Claude",
+      "name": "$(hubot) Claude",
       "color": "blue",
       "shortcut": "c",
       "command": "export IS_SANDBOX=1 && claude --dangerously-skip-permissions",
