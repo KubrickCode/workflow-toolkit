@@ -7,6 +7,10 @@ on:
         description: "GitHub Project number"
         type: string
         required: true
+      owner-type:
+        description: "Owner type (user or organization)"
+        type: string
+        default: "user"
       status-progress:
         description: "Status name for In Progress"
         type: string
@@ -124,6 +128,7 @@ jobs:
           issue-node-id: ${{ steps.linked.outputs.issue_node_id }}
           target-status: ${{ inputs.pr-is-draft && inputs.status-progress || inputs.status-review }}
           project-number: ${{ inputs.project-number }}
+          owner-type: ${{ inputs.owner-type }}
           github-token: ${{ secrets.GH_PAT }}
 
       - name: Add Gemini review for non-draft PR
@@ -186,6 +191,7 @@ jobs:
           issue-node-id: ${{ steps.linked.outputs.issue_node_id }}
           target-status: ${{ inputs.status-review }}
           project-number: ${{ inputs.project-number }}
+          owner-type: ${{ inputs.owner-type }}
           github-token: ${{ secrets.GH_PAT }}
 
   converted-to-draft:
@@ -226,4 +232,5 @@ jobs:
           issue-node-id: ${{ steps.linked.outputs.issue_node_id }}
           target-status: ${{ inputs.status-progress }}
           project-number: ${{ inputs.project-number }}
+          owner-type: ${{ inputs.owner-type }}
           github-token: ${{ secrets.GH_PAT }}

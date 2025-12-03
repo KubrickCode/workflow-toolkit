@@ -1,6 +1,6 @@
 #!/bin/bash
 # get-project-data.sh - Fetches project ID and status field information
-# Usage: ./get-project-data.sh <owner> <project_number> [status_field_name]
+# Usage: ./get-project-data.sh <owner> <project_number> [status_field_name] [owner_type]
 # Outputs: PROJECT_ID, STATUS_FIELD_ID, and all status option IDs
 
 set -euo pipefail
@@ -8,39 +8,68 @@ set -euo pipefail
 OWNER="$1"
 PROJECT_NUMBER="$2"
 STATUS_FIELD_NAME="${3:-Status}"
+OWNER_TYPE="${4:-user}"
 
 echo "::group::Fetching project data" >&2
 
-PROJECT_DATA=$(gh api graphql -f query='
-  query($owner: String!, $number: Int!) {
-    user(login: $owner) {
-      projectV2(number: $number) {
-        id
-        fields(first: 20) {
-          nodes {
-            ... on ProjectV2SingleSelectField {
-              id
-              name
-              options {
+if [ "$OWNER_TYPE" = "organization" ]; then
+  PROJECT_DATA=$(gh api graphql -f query='
+    query($owner: String!, $number: Int!) {
+      organization(login: $owner) {
+        projectV2(number: $number) {
+          id
+          fields(first: 20) {
+            nodes {
+              ... on ProjectV2SingleSelectField {
                 id
                 name
+                options {
+                  id
+                  name
+                }
               }
             }
           }
         }
       }
     }
-  }
-' -f owner="$OWNER" -F number="$PROJECT_NUMBER")
+  ' -f owner="$OWNER" -F number="$PROJECT_NUMBER")
 
-if [ -z "$PROJECT_DATA" ] || [ "$(echo "$PROJECT_DATA" | jq -r '.data.user.projectV2')" = "null" ]; then
+  PROJECT_PATH=".data.organization.projectV2"
+else
+  PROJECT_DATA=$(gh api graphql -f query='
+    query($owner: String!, $number: Int!) {
+      user(login: $owner) {
+        projectV2(number: $number) {
+          id
+          fields(first: 20) {
+            nodes {
+              ... on ProjectV2SingleSelectField {
+                id
+                name
+                options {
+                  id
+                  name
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ' -f owner="$OWNER" -F number="$PROJECT_NUMBER")
+
+  PROJECT_PATH=".data.user.projectV2"
+fi
+
+if [ -z "$PROJECT_DATA" ] || [ "$(echo "$PROJECT_DATA" | jq -r "$PROJECT_PATH")" = "null" ]; then
   echo "::error::Failed to fetch project data"
   exit 1
 fi
 
-PROJECT_ID=$(echo "$PROJECT_DATA" | jq -r '.data.user.projectV2.id')
-STATUS_FIELD_ID=$(echo "$PROJECT_DATA" | jq -r --arg name "$STATUS_FIELD_NAME" '.data.user.projectV2.fields.nodes[] | select(.name == $name) | .id')
-STATUS_OPTIONS=$(echo "$PROJECT_DATA" | jq -c --arg name "$STATUS_FIELD_NAME" '.data.user.projectV2.fields.nodes[] | select(.name == $name) | .options')
+PROJECT_ID=$(echo "$PROJECT_DATA" | jq -r "$PROJECT_PATH.id")
+STATUS_FIELD_ID=$(echo "$PROJECT_DATA" | jq -r --arg name "$STATUS_FIELD_NAME" "$PROJECT_PATH.fields.nodes[] | select(.name == \$name) | .id")
+STATUS_OPTIONS=$(echo "$PROJECT_DATA" | jq -c --arg name "$STATUS_FIELD_NAME" "$PROJECT_PATH.fields.nodes[] | select(.name == \$name) | .options")
 
 if [ -z "$STATUS_FIELD_ID" ] || [ "$STATUS_FIELD_ID" = "null" ]; then
   echo "::error::Status field '$STATUS_FIELD_NAME' not found in project"

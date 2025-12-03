@@ -49,6 +49,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 Reusable GitHub Actions workflows for issue and PR automation with GitHub Projects V2. This toolkit provides:
+
 - **Issue Automation**: Auto-assign, add to project, move bug issues to "Ready" status
 - **PR Automation**: Auto-assign, sync labels from linked issue, update project status based on draft state, Gemini review integration
 
@@ -73,11 +74,13 @@ Reusable GitHub Actions workflows for issue and PR automation with GitHub Projec
 ## Architecture
 
 ### Workflow Design
+
 - **workflow_call** trigger: Both workflows are reusable, called from consumer repos
 - Workflows use `actions/checkout` to fetch this repo, then invoke local composite action
 - GraphQL operations handled via shell scripts in `project-status/scripts/`
 
 ### Key Patterns
+
 - Issue/PR node IDs passed for GraphQL mutations
 - Status field management via `project-status` composite action (add-to-project, update-status)
 - Linked issue detection for PR → Issue status sync
@@ -103,6 +106,7 @@ npm run prepare
 ## Slash Commands
 
 Key workflow commands available:
+
 - `/workflow:analyze [task]` - Generate analysis document with solution approaches
 - `/workflow:plan` - Create implementation plan with commit-level tasks
 - `/workflow:execute` - Execute commits from plan

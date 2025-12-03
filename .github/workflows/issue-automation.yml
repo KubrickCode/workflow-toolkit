@@ -7,6 +7,10 @@ on:
         description: "GitHub Project number"
         type: string
         required: true
+      owner-type:
+        description: "Owner type (user or organization)"
+        type: string
+        default: "user"
       status-backlog:
         description: "Status name for Backlog"
         type: string
@@ -80,6 +84,7 @@ jobs:
           issue-node-id: ${{ inputs.issue-node-id }}
           target-status: ${{ inputs.has-bug-label && inputs.status-ready || inputs.status-backlog }}
           project-number: ${{ inputs.project-number }}
+          owner-type: ${{ inputs.owner-type }}
           github-token: ${{ secrets.GH_PAT }}
 
   bug-to-ready:
@@ -102,11 +107,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           OWNER: ${{ github.repository_owner }}
           PROJECT_NUMBER: ${{ inputs.project-number }}
+          OWNER_TYPE: ${{ inputs.owner-type }}
         run: |
           RESULT=$(./.github/actions/project-status/scripts/get-project-data.sh \
             "$OWNER" \
             "$PROJECT_NUMBER" \
-            "Status")
+            "Status" \
+            "$OWNER_TYPE")
 
           PROJECT_ID=$(echo "$RESULT" | grep "^project_id=" | cut -d= -f2-)
           echo "project_id=$PROJECT_ID" >> $GITHUB_OUTPUT
@@ -148,6 +155,7 @@ jobs:
           issue-node-id: ${{ inputs.issue-node-id }}
           target-status: ${{ inputs.status-ready }}
           project-number: ${{ inputs.project-number }}
+          owner-type: ${{ inputs.owner-type }}
           github-token: ${{ secrets.GH_PAT }}
 
   remove-needs-thinking-on-close:

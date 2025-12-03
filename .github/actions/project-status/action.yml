@@ -15,6 +15,10 @@ inputs:
   project-number:
     description: "GitHub Project number"
     required: true
+  owner-type:
+    description: "Owner type: user | organization"
+    required: false
+    default: "user"
   status-field-name:
     description: "Status field name in the project"
     required: false
@@ -46,11 +50,13 @@ runs:
         OWNER: ${{ github.repository_owner }}
         PROJECT_NUMBER: ${{ inputs.project-number }}
         STATUS_FIELD_NAME: ${{ inputs.status-field-name }}
+        OWNER_TYPE: ${{ inputs.owner-type }}
       run: |
         RESULT=$("${{ github.action_path }}/scripts/get-project-data.sh" \
           "$OWNER" \
           "$PROJECT_NUMBER" \
-          "$STATUS_FIELD_NAME")
+          "$STATUS_FIELD_NAME" \
+          "$OWNER_TYPE")
 
         PROJECT_ID=$(echo "$RESULT" | grep "^project_id=" | cut -d= -f2-)
         STATUS_FIELD_ID=$(echo "$RESULT" | grep "^status_field_id=" | cut -d= -f2-)
