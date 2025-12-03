@@ -52,15 +52,14 @@ jobs:
       pull-requests: write
     steps:
       - name: Add owner as reviewer
-        if: inputs.pr-user-login != github.repository_owner
+        if: inputs.pr-user-login != 'KubrickCode'
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ inputs.pr-number }}
-          OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.repository }}
         run: |
           gh pr edit "$PR_NUMBER" \
-            --add-reviewer "$OWNER" \
+            --add-reviewer "KubrickCode" \
             --repo "$REPO"
 
   assign-and-sync-on-open:
